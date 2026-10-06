@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alea // The Serendipity Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              500: '#10b981',
+              600: '#059669',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      overflow-x: hidden;
+    }
+
+    /* Glassmorphism utility */
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+    .dark .glass-panel {
+      background: rgba(18, 24, 38, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Interactive 3D Dice Flip effect */
+    .dice-cube {
+      transform-style: preserve-3d;
+      transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .coin-flip {
+      transition: transform 0.7s cubic-bezier(0.4, 2, 0.5, 1);
+      transform-style: preserve-3d;
+    }
+
+    /* Subtle pulse animation for active elements */
+    @keyframes subtlePulse {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.05); }
+    }
+    .ambient-glow {
+      animation: subtlePulse 7s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen relative flex flex-col selection:bg-emerald-500 selection:text-white">
+
+  <canvas id="ambient-canvas" class="fixed inset-0 pointer-events-none z-0 opacity-60 dark:opacity-40"></canvas>
+  <div class="fixed top-[-10vw] left-[-10vw] w-[45vw] h-[45vw] rounded-full bg-emerald-500/15 dark:bg-emerald-500/10 blur-3xl pointer-events-none ambient-glow"></div>
+  <div class="fixed bottom-[-10vw] right-[-10vw] w-[50vw] h-[50vw] rounded-full bg-cyan-500/15 dark:bg-indigo-500/10 blur-3xl pointer-events-none ambient-glow" style="animation-delay: -3.5s;"></div>
+
+  <header class="sticky top-0 z-40 w-full glass-panel border-b border-slate-200/50 dark:border-slate-800/80 px-4 sm:px-8 py-3.5 flex items-center justify-between transition-colors">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-300 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-emerald-500/20">
+        🎲
+      </div>
+      <div>
+        <h1 class="text-base font-bold tracking-tight flex items-center gap-2">
+          <span>ALEA</span>
+          <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">Studio v2.4</span>
+        </h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Serendipity, Algorithms & Generative Chaos</p>
+      </div>
+    </div>
+
+    <!-- Theme Toggle and Quick Actions -->
+    <div class="flex items-center gap-2">
+      <button id="chaos-btn" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition shadow-sm hover:shadow flex items-center gap-1.5 active:scale-95">
+        <span>⚡</span>
+        <span class="hidden sm:inline">Randomize All</span>
+      </button>
+
+      <button id="theme-toggle" class="p-2 rounded-lg bg-slate-200/70 hover:bg-slate-300/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition" aria-label="Toggle theme">
+        <svg id="moon-icon" class="w-4 h-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <svg id="sun-icon" class="w-4 h-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+    <!-- Hero / Serendipity Quote Ticker -->
+    <section class="glass-panel rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="space-y-2 max-w-2xl">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            <span class="text-xs uppercase tracking-wider font-semibold text-emerald-600 dark:text-emerald-400 font-mono">Thought of the Microsecond</span>
+          </div>
+          <p id="quote-text" class="text-lg sm:text-xl font-medium tracking-tight text-slate-800 dark:text-slate-100 leading-relaxed italic">
+            "Randomness is not absence of order, but an order of higher complexity."
+          </p>
+          <p id="quote-author" class="text-xs font-mono text-slate-500 dark:text-slate-400">
+            — Gregory Chaitin
+          </p>
+        </div>
+        <button id="new-quote-btn" class="self-start md:self-center px-4 py-2 text-xs font-medium rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition flex items-center gap-2 active:scale-95 shrink-0">
+          <span>🔄</span>
+          <span>New Thought</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Grid Layout for Utilities -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      <section class="glass-panel rounded-2xl p-5 flex flex-col justify-between shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🎨</span>
+            <h2 class="font-semibold text-sm tracking-wide">Chromatic Spectrum</h2>
+          </div>
+          <button id="gen-palette-btn" class="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition text-xs font-mono text-emerald-600 dark:text-emerald-400">
+            Shuffle
+          </button>
+        </div>
+
+        <div id="palette-container" class="grid grid-cols-5 gap-2 h-32 rounded-xl overflow-hidden p-1 bg-slate-100 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50">
+          <!-- Dynamic Color Swatches -->
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-mono">
+          <span>Click any color swatch to copy HEX</span>
+          <span id="copy-status" class="text-emerald-500 font-semibold opacity-0 transition-opacity duration-200">Copied!</span>
+        </div>
+      </section>
+
+      <section class="glass-panel rounded-2xl p-5 flex flex-col justify-between shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🎯</span>
+            <h2 class="font-semibold text-sm tracking-wide">Stochastic Probability</h2>
+          </div>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400">True Float RND</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 h-32">
+          <!-- Dice Container -->
+          <div id="dice-box" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-100/80 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 cursor-pointer group hover:border-emerald-500/50 transition">
+            <div id="dice-display" class="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 transition-transform group-hover:scale-105">
+              6
+            </div>
+            <span class="text-[11px] font-medium mt-2 text-slate-500 group-hover:text-emerald-500 transition">Roll D6</span>
+          </div>
+
+          <!-- Coin Container -->
+          <div id="coin-box" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-100/80 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 cursor-pointer group hover:border-emerald-500/50 transition">
+            <div id="coin-display" class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-200 text-amber-900 shadow-md flex items-center justify-center text-xs font-black uppercase tracking-wider font-mono border-2 border-yellow-300 transition-transform group-hover:scale-105">
+              HEADS
+            </div>
+            <span class="text-[11px] font-medium mt-2 text-slate-500 group-hover:text-amber-500 transition">Flip Coin</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400">
+          <span>D20 Value: <strong id="d20-value" class="text-slate-800 dark:text-slate-200">17</strong></span>
+          <button id="roll-d20-btn" class="hover:underline text-emerald-500">Roll D20</button>
+        </div>
+      </section>
+
+      <section class="glass-panel rounded-2xl p-5 flex flex-col justify-between shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🔐</span>
+            <h2 class="font-semibold text-sm tracking-wide">Entropy Secret Key</h2>
+          </div>
+          <button id="gen-key-btn" class="text-xs font-mono text-emerald-600 dark:text-emerald-400 hover:underline">Regenerate</button>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-100/80 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 flex flex-col justify-center space-y-1">
+          <div class="text-[10px] font-mono text-slate-400 uppercase tracking-widest">Pseudorandom Hash</div>
+          <div id="entropy-hash" class="font-mono text-xs break-all select-all font-semibold text-emerald-600 dark:text-emerald-400">
+            0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1f
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-500 dark:text-slate-400 font-mono">UUID v4:</span>
+          <span id="uuid-display" class="font-mono text-[11px] text-slate-700 dark:text-slate-300 truncate max-w-[170px] select-all"></span>
+        </div>
+      </section>
+    </div>
+
+    <section class="glass-panel rounded-2xl p-6 shadow-sm space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="font-semibold text-base flex items-center gap-2">
+            <span>✨</span>
+            <span>Generative Vector Flow</span>
+          </h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Interactive mathematical seed visualization based on harmonic Lissajous curves & noise</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button id="art-mode-btn" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            Next Pattern
+          </button>
+          <button id="art-regen-btn" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium transition shadow-sm active:scale-95">
+            Mutate Seed
+          </button>
+          <button id="art-export-btn" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1">
+            <span>📥</span> Download
+          </button>
+        </div>
+      </div>
+
+      <div class="relative w-full h-80 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 shadow-inner group">
+        <canvas id="gen-canvas" class="w-full h-full block cursor-crosshair"></canvas>
+        <div class="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-mono text-emerald-400 border border-emerald-500/20 pointer-events-none">
+          Seed: <span id="art-seed-display">84920</span> | Move mouse/touch to distort
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="relative z-10 w-full glass-panel border-t border-slate-200/50 dark:border-slate-800/80 py-4 px-6 text-center text-xs text-slate-500 dark:text-slate-400 mt-auto">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <span class="font-mono">Created with Pure HTML5, Modern Canvas & Tailwind</span>
+      <span>Autonomous Procedural Engine &bull; Zero External Assets</span>
+    </div>
+  </footer>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium shadow-xl transform translate-y-16 opacity-0 transition duration-300 flex items-center gap-2 pointer-events-none">
+    <span id="toast-icon">✓</span>
+    <span id="toast-msg">Copied to clipboard</span>
+  </div>
+
+  <script>
+    /* Theme Toggle */
+    const themeBtn = document.getElementById('theme-toggle');
+    themeBtn.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+    });
+
+    /* Toast Helper */
+    function showToast(msg, icon = '✓') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toastIcon.innerText = icon;
+      toast.classList.remove('translate-y-16', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.add('translate-y-16', 'opacity-0');
+        toast.classList.remove('translate-y-0', 'opacity-100');
+      }, 2200);
+    }
+
+    /* Clipboard Copy Fallback Safe */
+    function copyText(text) {
+      const input = document.createElement('textarea');
+      input.value = text;
+      document.body.appendChild(input);
+      input.select();
+      try {
+        document.execCommand('copy');
+        showToast(`Copied: ${text}`);
+      } catch (err) {
+        showToast('Failed to copy', '⚠️');
+      }
+      document.body.removeChild(input);
+    }
+
+    const quotes = [
+      { text: "Randomness is not absence of order, but an order of higher complexity.", author: "Gregory Chaitin" },
+      { text: "The generation of random numbers is too important to be left to chance.", author: "Robert R. Coveyou" },
+      { text: "Chaos is merely order waiting to be deciphered.", author: "José Saramago" },
+      { text: "Simplicity is prerequisite for reliability.", author: "Edsger W. Dijkstra" },
+      { text: "Any one who considers arithmetical methods of producing random digits is, of course, in a state of sin.", author: "John von Neumann" },
+      { text: "Creativity is intelligence having fun in the boundary between predictability and chance.", author: "Anonymous" }
+    ];
+
+    function getRandomQuote() {
+      const q = quotes[Math.floor(Math.random() * quotes.length)];
+      document.getElementById('quote-text').innerText = `"${q.text}"`;
+      document.getElementById('quote-author').innerText = `— ${q.author}`;
+    }
+    document.getElementById('new-quote-btn').addEventListener('click', getRandomQuote);
+
+    function hslToHex(h, s, l) {
+      l /= 100;
+      const a = s * Math.min(l, 1 - l) / 100;
+      const f = n => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');
+      };
+      return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
+    }
+
+    function generatePalette() {
+      const baseHue = Math.floor(Math.random() * 360);
+      const container = document.getElementById('palette-container');
+      container.innerHTML = '';
+
+      const harmonyOffsets = [0, 25, 50, 180, 210];
+      harmonyOffsets.forEach((offset, idx) => {
+        const hue = (baseHue + offset + Math.floor(Math.random() * 20)) % 360;
+        const sat = Math.floor(65 + Math.random() * 25);
+        const light = Math.floor(35 + Math.random() * 35);
+        const hex = hslToHex(hue, sat, light);
+
+        const swatch = document.createElement('button');
+        swatch.className = 'group relative w-full h-full rounded-lg transition-transform hover:scale-105 active:scale-95 flex flex-col justify-end p-1.5 text-[9px] font-mono text-white text-center font-bold shadow-sm';
+        swatch.style.backgroundColor = hex;
+        swatch.title = `Click to copy ${hex}`;
+
+        const label = document.createElement('span');
+        label.className = 'bg-black/50 backdrop-blur-sm rounded py-0.5 opacity-90 group-hover:opacity-100 transition';
+        label.innerText = hex;
+
+        swatch.appendChild(label);
+        swatch.addEventListener('click', () => copyText(hex));
+        container.appendChild(swatch);
+      });
+    }
+    document.getElementById('gen-palette-btn').addEventListener('click', generatePalette);
+
+    const diceBox = document.getElementById('dice-box');
+    const diceDisplay = document.getElementById('dice-display');
+    const coinBox = document.getElementById('coin-box');
+    const coinDisplay = document.getElementById('coin-display');
+    const d20Btn = document.getElementById('roll-d20-btn');
+    const d20Val = document.getElementById('d20-value');
+
+    function rollDice() {
+      diceDisplay.style.transform = 'rotate(360deg) scale(0.8)';
+      setTimeout(() => {
+        const val = Math.floor(Math.random() * 6) + 1;
+        diceDisplay.innerText = val;
+        diceDisplay.style.transform = 'rotate(0deg) scale(1)';
+      }, 200);
+    }
+    diceBox.addEventListener('click', rollDice);
+
+    function flipCoin() {
+      coinDisplay.style.transform = 'rotateY(720deg) scale(0.8)';
+      setTimeout(() => {
+        const isHeads = Math.random() > 0.5;
+        coinDisplay.innerText = isHeads ? 'HEADS' : 'TAILS';
+        coinDisplay.style.transform = 'rotateY(0deg) scale(1)';
+      }, 350);
+    }
+    coinBox.addEventListener('click', flipCoin);
+
+    d20Btn.addEventListener('click', () => {
+      let count = 0;
+      const interval = setInterval(() => {
+        d20Val.innerText = Math.floor(Math.random() * 20) + 1;
+        count++;
+        if (count > 7) clearInterval(interval);
+      }, 40);
+    });
+
+    function generateEntropy() {
+      const hexChars = '0123456789abcdef';
+      let hash = '0x';
+      for (let i = 0; i < 40; i++) {
+        hash += hexChars[Math.floor(Math.random() * 16)];
+      }
+      document.getElementById('entropy-hash').innerText = hash;
+
+      // Pseudo UUIDv4
+      const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+      document.getElementById('uuid-display').innerText = uuid;
+    }
+    document.getElementById('gen-key-btn').addEventListener('click', generateEntropy);
+
+    const bgCanvas = document.getElementById('ambient-canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    let bgParticles = [];
+
+    function resizeBgCanvas() {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+      bgParticles = [];
+      const count = Math.floor(window.innerWidth / 30);
+      for (let i = 0; i < count; i++) {
+        bgParticles.push({
+          x: Math.random() * bgCanvas.width,
+          y: Math.random() * bgCanvas.height,
+          radius: Math.random() * 1.8 + 0.6,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: (Math.random() - 0.5) * 0.4,
+          alpha: Math.random() * 0.5 + 0.2
+        });
+      }
+    }
+    window.addEventListener('resize', resizeBgCanvas);
+    resizeBgCanvas();
+
+    function renderAmbient() {
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+      const isDark = document.documentElement.classList.contains('dark');
+      bgCtx.fillStyle = isDark ? 'rgba(52, 211, 153, ' : 'rgba(16, 185, 129, ';
+
+      for (let i = 0; i < bgParticles.length; i++) {
+        const p = bgParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0) p.x = bgCanvas.width;
+        if (p.x > bgCanvas.width) p.x = 0;
+        if (p.y < 0) p.y = bgCanvas.height;
+        if (p.y > bgCanvas.height) p.y = 0;
+
+        bgCtx.beginPath();
+        bgCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        bgCtx.fillStyle = `${isDark ? 'rgba(52, 211, 153,' : 'rgba(16, 185, 129,'}${p.alpha})`;
+        bgCtx.fill();
+      }
+      requestAnimationFrame(renderAmbient);
+    }
+    requestAnimationFrame(renderAmbient);
+
+    const genCanvas = document.getElementById('gen-canvas');
+    const genCtx = genCanvas.getContext('2d');
+    let artSeed = Math.floor(Math.random() * 99999);
+    let artMode = 0;
+    let pointer = { x: 0.5, y: 0.5 };
+
+    function resizeGenCanvas() {
+      const rect = genCanvas.getBoundingClientRect();
+      genCanvas.width = rect.width * window.devicePixelRatio;
+      genCanvas.height = rect.height * window.devicePixelRatio;
+      drawGenerativeArt();
+    }
+
+    function setPointerPos(e) {
+      const rect = genCanvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      pointer.x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      pointer.y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+      drawGenerativeArt();
+    }
+
+    genCanvas.addEventListener('mousemove', setPointerPos);
+    genCanvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      setPointerPos(e);
+    }, { passive: false });
+
+    function drawGenerativeArt() {
+      const w = genCanvas.width;
+      const h = genCanvas.height;
+      genCtx.fillStyle = '#080d1a';
+      genCtx.fillRect(0, 0, w, h);
+
+      document.getElementById('art-seed-display').innerText = artSeed;
+
+      const a = (artSeed % 7) + 2 + pointer.x * 3;
+      const b = ((artSeed >> 3) % 5) + 3 + pointer.y * 3;
+      const steps = 600;
+      const cx = w / 2;
+      const cy = h / 2;
+      const radius = Math.min(w, h) * 0.42;
+
+      genCtx.lineWidth = 1.4;
+      genCtx.lineJoin = 'round';
+
+      if (artMode % 2 === 0) {
+        // Lissajous Knot Web
+        for (let j = 0; j < 3; j++) {
+          genCtx.beginPath();
+          const hueOffset = (artSeed + j * 60) % 360;
+          genCtx.strokeStyle = `hsla(${hueOffset}, 80%, 65%, 0.75)`;
+
+          for (let i = 0; i <= steps; i++) {
+            const t = (i / steps) * Math.PI * 2;
+            const delta = (j * 0.25) + (pointer.x * 0.5);
+            const x = cx + Math.sin(a * t + delta) * radius;
+            const y = cy + Math.cos(b * t) * radius;
+
+            if (i === 0) genCtx.moveTo(x, y);
+            else genCtx.lineTo(x, y);
+          }
+          genCtx.stroke();
+        }
+      } else {
+        // Hypnotic Spiral Rings
+        const ringCount = 28;
+        for (let r = 1; r <= ringCount; r++) {
+          genCtx.beginPath();
+          const curRadius = (r / ringCount) * radius;
+          const hue = (artSeed * 2 + r * 10 + pointer.x * 120) % 360;
+          genCtx.strokeStyle = `hsla(${hue}, 85%, 60%, 0.65)`;
+
+          for (let s = 0; s <= 90; s++) {
+            const angle = (s / 90) * Math.PI * 2;
+            const wave = Math.sin(angle * (4 + (artSeed % 4)) + pointer.y * 6) * (12 * (r / ringCount));
+            const x = cx + Math.cos(angle) * (curRadius + wave);
+            const y = cy + Math.sin(angle) * (curRadius + wave);
+
+            if (s === 0) genCtx.moveTo(x, y);
+            else genCtx.lineTo(x, y);
+          }
+          genCtx.closePath();
+          genCtx.stroke();
+        }
+      }
+    }
+
+    document.getElementById('art-regen-btn').addEventListener('click', () => {
+      artSeed = Math.floor(Math.random() * 999999);
+      drawGenerativeArt();
+    });
+
+    document.getElementById('art-mode-btn').addEventListener('click', () => {
+      artMode = (artMode + 1) % 2;
+      drawGenerativeArt();
+    });
+
+    document.getElementById('art-export-btn').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = `alea-art-seed-${artSeed}.png`;
+      link.href = genCanvas.toDataURL('image/png');
+      link.click();
+      showToast('Artwork exported as PNG');
+    });
+
+    // Randomize all controls simultaneously
+    document.getElementById('chaos-btn').addEventListener('click', () => {
+      getRandomQuote();
+      generatePalette();
+      rollDice();
+      flipCoin();
+      generateEntropy();
+      d20Val.innerText = Math.floor(Math.random() * 20) + 1;
+      artSeed = Math.floor(Math.random() * 999999);
+      drawGenerativeArt();
+      showToast('All parameters re-randomized!');
+    });
+
+    window.addEventListener('load', () => {
+      generatePalette();
+      generateEntropy();
+      resizeGenCanvas();
+    });
+    window.addEventListener('resize', resizeGenCanvas);
+  </script>
+</body>
+</html>
